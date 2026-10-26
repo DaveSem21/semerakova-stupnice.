@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Semerákova teplotní stupnice</title>
+<style>
+:root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#172033;background:#eef5fb}
+*{box-sizing:border-box}body{margin:0;padding:20px}
+main{max-width:760px;margin:0 auto}
+header{padding:24px;border-radius:22px;background:linear-gradient(135deg,#123c68,#2775a8);color:white}
+h1{margin:0 0 8px;font-size:clamp(1.6rem,5vw,2.25rem)}header p{margin:0;opacity:.92}
+.card{background:white;border-radius:18px;padding:20px;margin-top:16px;box-shadow:0 5px 18px #16395b12}
+label{display:block;font-weight:650;margin-bottom:8px}
+.entry{display:flex;gap:10px;flex-wrap:wrap}
+input,select,button{font:inherit;border:1px solid #cbd5e1;border-radius:12px;padding:12px;background:white}
+input{flex:1;min-width:140px}select{min-width:135px}
+.results{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin-top:14px}
+.result{padding:15px;border-radius:14px;background:#f1f7fc;border:1px solid #dfebf5}
+.result .name{font-size:.9rem;color:#536579}.result .value{font-size:1.45rem;font-weight:750;margin-top:5px;overflow-wrap:anywhere}
+.note{color:#536579;font-size:.92rem;line-height:1.5}
+h2{font-size:1.15rem;margin:0 0 12px}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{text-align:right;padding:9px 7px;border-bottom:1px solid #e4ebf2}
+th:first-child,td:first-child{text-align:left}
+.table-wrap{overflow-x:auto;max-height:440px}
+button{cursor:pointer;background:#e7f2fb;border-color:#c5dff2;color:#174c76;font-weight:650}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+@media(max-width:480px){body{padding:12px}.card{padding:15px}header{padding:20px}}
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>🌡️ Semerákova stupnice</h1>
+<p>Teplotní převodník • značka °D</p>
+</header>
+
+<section class="card">
+<label for="temp">Zadej teplotu</label>
+<div class="entry">
+<input id="temp" type="number" step="any" value="30" inputmode="decimal" aria-label="Hodnota teploty">
+<select id="unit" aria-label="Jednotka vstupní teploty">
+<option value="C">°C — Celsius</option>
+<option value="F">°F — Fahrenheit</option>
+<option value="K">K — Kelvin</option>
+<option value="D">°D — Semerákova</option>
+</select>
+</div>
+<div class="results" aria-live="polite">
+<div class="result"><div class="name">Celsius</div><div class="value" id="outC">30 °C</div></div>
+<div class="result"><div class="name">Fahrenheit</div><div class="value" id="outF">86 °F</div></div>
+<div class="result"><div class="name">Kelvin</div><div class="value" id="outK">303,15 K</div></div>
+<div class="result"><div class="name">Semerákova</div><div class="value" id="outD">75 °D</div></div>
+</div>
+<p class="note">Pravidlo Semerákovy stupnice: <strong>°D = °C × 2,5</strong>, tedy <strong>°C = °D ÷ 2,5</strong>. Funguje i pro záporné a desetinné hodnoty.</p>
+</section>
+
+<section class="card">
+<h2>Tabulka Semerákovy stupnice</h2>
+<p class="note">Po 1 °D od −100 do +100 °D, včetně všech mezihodnot. Převod na °C je počítán podle tvého pravidla.</p>
+<div class="actions">
+<button id="download">Stáhnout tabulku CSV</button>
+<button id="showAll">Zobrazit celou tabulku</button>
+</div>
+<div class="table-wrap" id="tableWrap">
+<table>
+<thead><tr><th>Semerákova</th><th>Celsius</th><th>Fahrenheit</th><th>Kelvin</th></tr></thead>
+<tbody id="rows"></tbody>
+</table>
+</div>
+</section>
+<p class="note">Poznámka: Jde o tvoji vlastní stupnici. Převody na °F a K vycházejí ze standardních převodů skutečné teploty v °C.</p>
+</main>
+<script>
+const temp = document.getElementById('temp');
+const unit = document.getElementById('unit');
+function fmt(n, max=2){
+  if (!Number.isFinite(n)) return '—';
+  if (Math.abs(n) < 0.0000001) n = 0;
+  return n.toLocaleString('cs-CZ',{maximumFractionDigits:max});
+}
+function update(){
+  const v = Number(temp.value);
+  if(temp.value.trim()==='' || !Number.isFinite(v)){
+    ['outC','outF','outK','outD'].forEach(id=>document.getElementById(id).textContent='—');
+    return;
+  }
+  let c;
+  if(unit.value==='C') c=v;
+  else if(unit.value==='F') c=(v-32)*5/9;
+  else if(unit.value==='K') c=v-273.15;
+  else c=v/2.5;
+  document.getElementById('outC').textContent=fmt(c)+' °C';
+  document.getElementById('outF').textContent=fmt(c*9/5+32)+' °F';
+  document.getElementById('outK').textContent=fmt(c+273.15)+' K';
+  document.getElementById('outD').textContent=fmt(c*2.5)+' °D';
+}
+temp.addEventListener('input',update);
+unit.addEventListener('change',update);
+
+const tbody=document.getElementById('rows');
+let allRows=[];
+for(let d=-100;d<=100;d++){
+  const c=d/2.5, f=c*9/5+32, k=c+273.15;
+  allRows.push([d,c,f,k]);
+}
+function renderTable(){
+  tbody.innerHTML='';
+  allRows.forEach(([d,c,f,k])=>{
+    const tr=document.createElement('tr');
+    [fmt(d,0)+' °D',fmt(c)+' °C',fmt(f)+' °F',fmt(k)+' K'].forEach(v=>{
+      const td=document.createElement('td');td.textContent=v;tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+}
+renderTable();
+document.getElementById('showAll').addEventListener('click',()=>{
+  document.getElementById('tableWrap').scrollTop=0;
+  document.getElementById('tableWrap').style.maxHeight='none';
+  document.getElementById('showAll').textContent='Celá tabulka je zobrazena';
+  document.getElementById('showAll').disabled=true;
+});
+document.getElementById('download').addEventListener('click',()=>{
+  const lines=[['Semerákova (°D)','Celsius (°C)','Fahrenheit (°F)','Kelvin (K)'],
+    ...allRows.map(([d,c,f,k])=>[d,c.toFixed(2),f.toFixed(2),k.toFixed(2)])];
+  const csv='\uFEFF'+lines.map(row=>row.join(';')).join('\r\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download='semerakova-stupnice.csv';a.click();
+  URL.revokeObjectURL(url);
+});
+update();
+</script>
+</body>
+</html>
